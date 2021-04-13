@@ -1,0 +1,19 @@
+- name: Make sure apt can connect to https repositories
+  apt: name=apt-transport-https state=present
+
+- name: Import the NodeSource GPG key into apt
+  shell: curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+
+- name: Add NodeSource repository to apt sources list
+  apt_repository: repo='deb https://deb.nodesource.com/setup_14.x {{ ansible_distribution_release }} main' state=present
+
+- name: Copy NodeSource apt pin file
+  copy: src=deb.nodesource.com.pref dest=/etc/apt/preferences.d
+
+- name: Install Node.js
+  apt: name=nodejs state=latest update_cache=yes
+
+# Playbook concocted from:
+# https://github.com/nodesource/ansible-nodejs-role
+# https://github.com/nodesource/distributions
+# https://github.com/nodesource/distributions/blob/master/deb/setup_5.x

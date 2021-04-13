@@ -1,0 +1,53 @@
+- hosts: droplet
+  remote_user: root
+
+  roles:
+    - node
+
+  # These should really be in roles.
+  tasks:
+    - name: Create swap file
+      # 2G swap file
+      command: dd if=/dev/zero of=/swapfile bs=1M count=2000
+      args:
+        # will only run if /swapfile does not exist yet
+        creates: /swapfile
+      register: swapfile
+
+    - name: Setup the swap file and enable it
+      command: "{{ item }}"
+      with_items:
+        - mkswap /swapfile
+        - swapon /swapfile
+      when: swapfile is changed
+
+    - name: Ensure swap is also enabled at boot time
+      lineinfile:
+        dest: /etc/fstab
+        line: '/swapfile swap swap defaults 0 0'
+      when: swapfile is changed
+
+    - name: Add users
+      user: name={{ item }} shell=/bin/bash groups=sudo
+      with_items:
+        - albert
+
+    - name: Passwordless sudo for users in sudo group
+      lineinfile:
+        dest: /etc/sudoers
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL:ALL)  NOPASSWD: ALL'
+
+    - name: Set up authorized_keys
+      authorized_key: user={{ item }} key="{{ lookup('file', 'public_keys/' + item) }}"
+      with_items:
+        - albert
+
+    - name: Ensure packages are at latest version
+      apt: update_cache=yes upgrade=dist
+
+    - name: Install required packages
+      apt: name={{ item }}
+      with_items:
+        - git
+        - man
